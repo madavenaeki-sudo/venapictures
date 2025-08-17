@@ -18,6 +18,12 @@ interface PublicBookingFormProps {
     setPromoCodes: React.Dispatch<React.SetStateAction<PromoCode[]>>;
     showNotification: (message: string) => void;
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
+    clientsApi: any;
+    projectsApi: any;
+    transactionsApi: any;
+    cardsApi: any;
+    promoCodesApi: any;
+    leadsApi: any;
 }
 
 const formatCurrency = (amount: number) => {
@@ -48,7 +54,8 @@ const UploadIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const PublicBookingForm: React.FC<PublicBookingFormProps> = ({ 
-    setClients, setProjects, packages, addOns, setTransactions, userProfile, cards, setCards, pockets, setPockets, promoCodes, setPromoCodes, showNotification, setLeads
+    setClients, setProjects, packages, addOns, setTransactions, userProfile, cards, setCards, pockets, setPockets, promoCodes, setPromoCodes, showNotification, setLeads,
+    clientsApi, projectsApi, transactionsApi, cardsApi, promoCodesApi, leadsApi
 }) => {
     const [formData, setFormData] = useState({...initialFormState, projectType: userProfile.projectTypes[0] || ''});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,69 +190,83 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
         const selectedAddOns = addOns.filter(addon => formData.selectedAddOnIds.includes(addon.id));
         const remainingPayment = totalProject - dpAmount;
 
-        const newClientId = `CLI${Date.now()}`;
         const newClient: Client = {
-            id: newClientId, name: formData.clientName, email: formData.email, phone: formData.phone, instagram: formData.instagram,
+            id: '', name: formData.clientName, email: formData.email, phone: formData.phone, instagram: formData.instagram,
             since: new Date().toISOString().split('T')[0], status: ClientStatus.ACTIVE, 
             clientType: ClientType.DIRECT,
             lastContact: new Date().toISOString(),
-            portalAccessId: crypto.randomUUID(),
+            portalAccessId: '',
         };
 
-        const newProject: Project = {
-            id: `PRJ${Date.now()}`,
-            projectName: `Acara ${formData.clientName}`,
-            clientName: newClient.name,
-            clientId: newClient.id,
-            projectType: formData.projectType,
-            packageName: selectedPackage.name,
-            packageId: selectedPackage.id,
-            addOns: selectedAddOns,
-            date: formData.date,
-            location: formData.location,
-            progress: 0,
-            status: 'Dikonfirmasi',
-            totalCost: totalProject,
-            amountPaid: dpAmount,
-            paymentStatus: dpAmount > 0 ? (remainingPayment <= 0 ? PaymentStatus.LUNAS : PaymentStatus.DP_TERBAYAR) : PaymentStatus.BELUM_BAYAR,
-            team: [],
-            notes: `Referensi Pembayaran DP: ${formData.dpPaymentRef}`,
-            promoCodeId: promoCodeAppliedId,
-            discountAmount: discountAmount > 0 ? discountAmount : undefined,
-            dpProofUrl: dpProofUrl || undefined,
-        };
-        
-        const newLead: Lead = {
-            id: `LEAD-FORM-${Date.now()}`,
-            name: newClient.name,
-            contactChannel: ContactChannel.WEBSITE,
-            location: newProject.location,
-            status: LeadStatus.CONVERTED,
-            date: new Date().toISOString().split('T')[0],
-            notes: `Dikonversi secara otomatis dari formulir pemesanan publik. Proyek: ${newProject.projectName}. Klien ID: ${newClient.id}`
-        };
 
-        setClients(prev => [newClient, ...prev]);
-        setProjects(prev => [newProject, ...prev]);
-        setLeads(prev => [newLead, ...prev]);
-
-        if (promoCodeAppliedId) {
-            setPromoCodes(prev => prev.map(p => p.id === promoCodeAppliedId ? { ...p, usageCount: p.usageCount + 1 } : p));
-        }
-
-        if (dpAmount > 0) {
-            const newTransaction: Transaction = {
-                id: `TRN-DP-${newProject.id}`, date: new Date().toISOString().split('T')[0], description: `DP Proyek ${newProject.projectName}`,
-                amount: dpAmount, type: TransactionType.INCOME, projectId: newProject.id, category: 'DP Proyek',
-                method: 'Transfer Bank', cardId: destinationCard.id,
+        try {
+            // Create client first
+            const createdClient = await clientsApi.create(newClient);
+            
+            const newProject: Project = {
+                id: '',
+                projectName: `Acara ${formData.clientName}`,
+                clientName: createdClient.name,
+                clientId: createdClient.id,
+                projectType: formData.projectType,
+                packageName: selectedPackage.name,
+                packageId: selectedPackage.id,
+                addOns: selectedAddOns,
+                date: formData.date,
+                location: formData.location,
+                progress: 0,
+                status: 'Dikonfirmasi',
+                totalCost: totalProject,
+                amountPaid: dpAmount,
+                paymentStatus: dpAmount > 0 ? (remainingPayment <= 0 ? PaymentStatus.LUNAS : PaymentStatus.DP_TERBAYAR) : PaymentStatus.BELUM_BAYAR,
+                team: [],
+                notes: `Referensi Pembayaran DP: ${formData.dpPaymentRef}`,
+                promoCodeId: promoCodeAppliedId,
+                discountAmount: discountAmount > 0 ? discountAmount : undefined,
+                dpProofUrl: dpProofUrl || undefined,
             };
-            setTransactions(prev => [...prev, newTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-            setCards(prev => prev.map(c => c.id === destinationCard.id ? { ...c, balance: c.balance + dpAmount } : c));
-        }
+            
+            // Create project
+            const createdProject = await projectsApi.create(newProject);
+            
+            const newLead: Lead = {
+                id: '',
+                name: createdClient.name,
+                contactChannel: ContactChannel.WEBSITE,
+                location: createdProject.location,
+                status: LeadStatus.CONVERTED,
+                date: new Date().toISOString().split('T')[0],
+                notes: `Dikonversi secara otomatis dari formulir pemesanan publik. Proyek: ${createdProject.projectName}. Klien ID: ${createdClient.id}`
+            };
+            
+            // Create lead
+            await leadsApi.create(newLead);
 
-        setIsSubmitting(false);
-        setIsSubmitted(true);
-        showNotification('Pemesanan baru dari klien diterima!');
+            if (promoCodeAppliedId) {
+                const promoCode = promoCodes.find(p => p.id === promoCodeAppliedId);
+                if (promoCode) {
+                    await promoCodesApi.update(promoCodeAppliedId, { usageCount: promoCode.usageCount + 1 });
+                }
+            }
+
+            if (dpAmount > 0) {
+                const newTransaction: Transaction = {
+                    id: '', date: new Date().toISOString().split('T')[0], description: `DP Proyek ${createdProject.projectName}`,
+                    amount: dpAmount, type: TransactionType.INCOME, projectId: createdProject.id, category: 'DP Proyek',
+                    method: 'Transfer Bank', cardId: destinationCard.id,
+                };
+                await transactionsApi.create(newTransaction);
+                await cardsApi.update(destinationCard.id, { balance: destinationCard.balance + dpAmount });
+            }
+
+            setIsSubmitting(false);
+            setIsSubmitted(true);
+            showNotification('Pemesanan baru dari klien diterima!');
+        } catch (err) {
+            console.error('Error creating booking:', err);
+            showNotification('Gagal menyimpan pemesanan. Silakan coba lagi.');
+            setIsSubmitting(false);
+        }
     };
     
     const renderSampleContract = () => {

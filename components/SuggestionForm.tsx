@@ -5,21 +5,22 @@ import { Lead, LeadStatus, ContactChannel } from '../types';
 
 interface SuggestionFormProps {
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
+    leadsApi: any;
 }
 
-const SuggestionForm: React.FC<SuggestionFormProps> = ({ setLeads }) => {
+const SuggestionForm: React.FC<SuggestionFormProps> = ({ setLeads, leadsApi }) => {
     const [name, setName] = useState('');
     const [contact, setContact] = useState('');
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         const newLead: Lead = {
-            id: `LEAD-SUG-${Date.now()}`,
+            id: '',
             name: name,
             contactChannel: ContactChannel.SUGGESTION_FORM,
             location: 'Form Online',
@@ -28,12 +29,15 @@ const SuggestionForm: React.FC<SuggestionFormProps> = ({ setLeads }) => {
             notes: `Kontak: ${contact}\n\nPesan:\n${message}`
         };
 
-        // Simulate API call to save the lead
-        setTimeout(() => {
-            setLeads(prev => [newLead, ...prev]);
+        try {
+            await leadsApi.create(newLead);
             setIsSubmitting(false);
             setIsSubmitted(true);
-        }, 1000);
+        } catch (err) {
+            console.error('Error creating suggestion:', err);
+            alert('Gagal mengirim masukan. Silakan coba lagi.');
+            setIsSubmitting(false);
+        }
     };
     
     const Logo = () => (

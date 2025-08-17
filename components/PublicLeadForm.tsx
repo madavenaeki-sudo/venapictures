@@ -7,9 +7,10 @@ interface PublicLeadFormProps {
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
     userProfile: Profile;
     showNotification: (message: string) => void;
+    leadsApi: any;
 }
 
-const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile }) => {
+const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, showNotification, leadsApi }) => {
     const [formState, setFormState] = useState({
         name: '',
         whatsapp: '',
@@ -25,14 +26,14 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile }
         setFormState(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         const notes = `Jenis Acara: ${formState.eventType}\nTanggal Acara: ${new Date(formState.eventDate).toLocaleDateString('id-ID')}\nLokasi Acara: ${formState.eventLocation}`;
 
         const newLead: Lead = {
-            id: `LEAD-FORM-${Date.now()}`,
+            id: '',
             name: formState.name,
             whatsapp: formState.whatsapp,
             contactChannel: ContactChannel.WEBSITE, // Since it's from a web form
@@ -42,12 +43,15 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile }
             notes: notes
         };
         
-        // Simulate API call
-        setTimeout(() => {
-            setLeads(prev => [newLead, ...prev]);
+        try {
+            await leadsApi.create(newLead);
             setIsSubmitting(false);
             setIsSubmitted(true);
-        }, 1000);
+        } catch (err) {
+            console.error('Error creating lead:', err);
+            alert('Gagal mengirim informasi. Silakan coba lagi.');
+            setIsSubmitting(false);
+        }
     };
 
     if (isSubmitted) {

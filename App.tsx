@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ViewType, Client, Project, TeamMember, Transaction, Package, AddOn, TeamProjectPayment, Profile, FinancialPocket, TeamPaymentRecord, Lead, RewardLedgerEntry, User, Card, Asset, ClientFeedback, Contract, RevisionStatus, NavigationAction, Notification, SocialMediaPost, PromoCode, SOP } from './types';
-import { MOCK_CLIENTS, MOCK_PROJECTS, MOCK_TEAM_MEMBERS, MOCK_TRANSACTIONS, MOCK_PACKAGES, MOCK_ADDONS, MOCK_TEAM_PROJECT_PAYMENTS, MOCK_USER_PROFILE, MOCK_FINANCIAL_POCKETS, MOCK_TEAM_PAYMENT_RECORDS, MOCK_LEADS, MOCK_REWARD_LEDGER_ENTRIES, MOCK_USERS, MOCK_CARDS, MOCK_ASSETS, MOCK_CLIENT_FEEDBACK, MOCK_CONTRACTS, MOCK_NOTIFICATIONS, MOCK_SOCIAL_MEDIA_POSTS, MOCK_PROMO_CODES, MOCK_SOPS, HomeIcon, FolderKanbanIcon, UsersIcon, DollarSignIcon, PlusIcon } from './constants';
+import { HomeIcon, FolderKanbanIcon, UsersIcon, DollarSignIcon, PlusIcon } from './constants';
+import { useSupabaseData } from './hooks/useSupabaseData';
+import { AuthProvider, useAuth } from './components/SupabaseProvider';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Leads from './components/Leads';
@@ -29,6 +31,15 @@ import FreelancerPortal from './components/FreelancerPortal';
 import SocialPlanner from './components/SocialPlanner';
 import PromoCodes from './components/PromoCodes';
 import SOPManagement from './components/SOP';
+
+const LoadingScreen: React.FC = () => (
+    <div className="flex items-center justify-center min-h-screen bg-brand-bg">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-accent mx-auto mb-4"></div>
+            <p className="text-brand-text-secondary">Memuat aplikasi...</p>
+        </div>
+    </div>
+);
 
 const AccessDenied: React.FC<{onBackToDashboard: () => void}> = ({ onBackToDashboard }) => (
     <div className="flex flex-col items-center justify-center h-full text-center p-4">
@@ -101,7 +112,27 @@ const FloatingActionButton: React.FC<{ onAddClick: (type: string) => void }> = (
 };
 
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { user: supabaseUser } = useAuth();
+  const {
+    clients, projects, packages, addOns, teamMembers, transactions,
+    cards, pockets, leads, assets, contracts, clientFeedback,
+    socialMediaPosts, promoCodes, sops, notifications,
+    teamProjectPayments, teamPaymentRecords, rewardLedgerEntries,
+    profile, users,
+    setClients, setProjects, setPackages, setAddOns, setTeamMembers,
+    setTransactions, setCards, setPockets, setLeads, setAssets,
+    setContracts, setClientFeedback, setSocialMediaPosts, setPromoCodes,
+    setSops, setNotifications, setTeamProjectPayments, setTeamPaymentRecords,
+    setRewardLedgerEntries, setProfile, setUsers,
+    clientsApi, projectsApi, packagesApi, addOnsApi, teamMembersApi,
+    transactionsApi, cardsApi, pocketsApi, leadsApi, assetsApi,
+    contractsApi, feedbackApi, socialPostsApi, promoCodesApi,
+    sopsApi, notificationsApi, teamPaymentsApi, paymentRecordsApi,
+    rewardEntriesApi, profileApi, usersApi,
+    loading, error
+  } = useSupabaseData();
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
@@ -119,28 +150,19 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Lifted State for global management and integration
-  const [users, setUsers] = useState<User[]>(() => JSON.parse(JSON.stringify(MOCK_USERS)));
-  const [clients, setClients] = useState<Client[]>(() => JSON.parse(JSON.stringify(MOCK_CLIENTS)));
-  const [projects, setProjects] = useState<Project[]>(() => JSON.parse(JSON.stringify(MOCK_PROJECTS)));
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => JSON.parse(JSON.stringify(MOCK_TEAM_MEMBERS)));
-  const [transactions, setTransactions] = useState<Transaction[]>(() => JSON.parse(JSON.stringify(MOCK_TRANSACTIONS)));
-  const [packages, setPackages] = useState<Package[]>(() => JSON.parse(JSON.stringify(MOCK_PACKAGES)));
-  const [addOns, setAddOns] = useState<AddOn[]>(() => JSON.parse(JSON.stringify(MOCK_ADDONS)));
-  const [teamProjectPayments, setTeamProjectPayments] = useState<TeamProjectPayment[]>(() => JSON.parse(JSON.stringify(MOCK_TEAM_PROJECT_PAYMENTS)));
-  const [teamPaymentRecords, setTeamPaymentRecords] = useState<TeamPaymentRecord[]>(() => JSON.parse(JSON.stringify(MOCK_TEAM_PAYMENT_RECORDS)));
-  const [pockets, setPockets] = useState<FinancialPocket[]>(() => JSON.parse(JSON.stringify(MOCK_FINANCIAL_POCKETS)));
-  const [profile, setProfile] = useState<Profile>(() => JSON.parse(JSON.stringify(MOCK_USER_PROFILE)));
-  const [leads, setLeads] = useState<Lead[]>(() => JSON.parse(JSON.stringify(MOCK_LEADS)));
-  const [rewardLedgerEntries, setRewardLedgerEntries] = useState<RewardLedgerEntry[]>(() => JSON.parse(JSON.stringify(MOCK_REWARD_LEDGER_ENTRIES)));
-  const [cards, setCards] = useState<Card[]>(() => JSON.parse(JSON.stringify(MOCK_CARDS)));
-  const [assets, setAssets] = useState<Asset[]>(() => JSON.parse(JSON.stringify(MOCK_ASSETS)));
-  const [contracts, setContracts] = useState<Contract[]>(() => JSON.parse(JSON.stringify(MOCK_CONTRACTS)));
-  const [clientFeedback, setClientFeedback] = useState<ClientFeedback[]>(() => JSON.parse(JSON.stringify(MOCK_CLIENT_FEEDBACK)));
-  const [notifications, setNotifications] = useState<Notification[]>(() => JSON.parse(JSON.stringify(MOCK_NOTIFICATIONS)));
-  const [socialMediaPosts, setSocialMediaPosts] = useState<SocialMediaPost[]>(() => JSON.parse(JSON.stringify(MOCK_SOCIAL_MEDIA_POSTS)));
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>(() => JSON.parse(JSON.stringify(MOCK_PROMO_CODES)));
-  const [sops, setSops] = useState<SOP[]>(() => JSON.parse(JSON.stringify(MOCK_SOPS)));
+  // Check authentication status
+  useEffect(() => {
+    if (supabaseUser && users.length > 0) {
+      const appUser = users.find(u => u.email === supabaseUser.email);
+      if (appUser) {
+        setIsAuthenticated(true);
+        setCurrentUser(appUser);
+      }
+    } else if (!supabaseUser) {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    }
+  }, [supabaseUser, users]);
 
   const showNotification = (message: string, duration: number = 3000) => {
     setNotification(message);
@@ -156,16 +178,17 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    auth.signOut();
     setIsAuthenticated(false);
     setCurrentUser(null);
   };
 
   const handleMarkAsRead = (notificationId: string) => {
-    setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n));
+    notificationsApi.markAsRead(notificationId);
   };
   
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    notificationsApi.markAllAsRead();
   };
 
   const handleNavigation = (view: ViewType, action?: NavigationAction, notificationId?: string) => {
@@ -179,8 +202,29 @@ const App: React.FC = () => {
   };
 
   const handleUpdateRevision = (projectId: string, revisionId: string, updatedData: { freelancerNotes: string, driveLink: string, status: RevisionStatus }) => {
-    setProjects(prevProjects => {
-        return prevProjects.map(p => {
+    const project = projects.find(p => p.id === projectId);
+    if (project) {
+        const updatedRevisions = (project.revisions || []).map(r => {
+            if (r.id === revisionId) {
+                return { 
+                    ...r, 
+                    freelancerNotes: updatedData.freelancerNotes,
+                    driveLink: updatedData.driveLink,
+                    status: updatedData.status,
+                    completedDate: updatedData.status === RevisionStatus.COMPLETED ? new Date().toISOString() : r.completedDate,
+                };
+            }
+            return r;
+        });
+        
+        projectsApi.update(projectId, { revisions: updatedRevisions }).then(() => {
+            showNotification("Update revisi telah berhasil dikirim.");
+        }).catch(err => {
+            console.error('Error updating revision:', err);
+            showNotification("Gagal mengupdate revisi.");
+        });
+    }
+  };
             if (p.id === projectId) {
                 const updatedRevisions = (p.revisions || []).map(r => {
                     if (r.id === revisionId) {
@@ -282,7 +326,128 @@ const App: React.FC = () => {
         showNotification('Slip pembayaran berhasil ditandatangani.');
     };
 
+    const handleClientConfirmation = async (projectId: string, stage: 'editing' | 'printing' | 'delivery') => {
+        const updates: Partial<Project> = {};
+        if (stage === 'editing') updates.isEditingConfirmedByClient = true;
+        if (stage === 'printing') updates.isPrintingConfirmedByClient = true;
+        if (stage === 'delivery') updates.isDeliveryConfirmedByClient = true;
+        
+        try {
+            await projectsApi.update(projectId, updates);
+            showNotification("Konfirmasi telah diterima. Terima kasih!");
+        } catch (err) {
+            console.error('Error updating confirmation:', err);
+            showNotification("Gagal menyimpan konfirmasi.");
+        }
+    };
+    
+    const handleClientSubStatusConfirmation = async (projectId: string, subStatusName: string, note: string) => {
+        const project = projects.find(p => p.id === projectId);
+        if (!project) return;
+        
+        const confirmed = [...(project.confirmedSubStatuses || []), subStatusName];
+        const notes = { ...(project.clientSubStatusNotes || {}), [subStatusName]: note };
+        
+        try {
+            await projectsApi.update(projectId, { 
+                confirmedSubStatuses: confirmed, 
+                clientSubStatusNotes: notes 
+            });
+            
+            // Create notification
+            const newNotification: Omit<Notification, 'id'> = {
+                title: 'Catatan Klien Baru',
+                message: `Klien ${project.clientName} memberikan catatan pada sub-status "${subStatusName}" di proyek "${project.projectName}".`,
+                timestamp: new Date().toISOString(),
+                isRead: false,
+                icon: 'comment',
+                linkView: ViewType.PROJECTS,
+                linkAction: { type: 'VIEW_PROJECT_DETAILS', id: projectId }
+            };
+            
+            await notificationsApi.create(newNotification);
+            showNotification(`Konfirmasi untuk "${subStatusName}" telah diterima.`);
+        } catch (err) {
+            console.error('Error updating sub-status confirmation:', err);
+            showNotification("Gagal menyimpan konfirmasi.");
+        }
+    };
+    
+    const handleSignContract = async (contractId: string, signatureDataUrl: string, signer: 'vendor' | 'client') => {
+        const updates: Partial<Contract> = {};
+        if (signer === 'vendor') updates.vendorSignature = signatureDataUrl;
+        if (signer === 'client') updates.clientSignature = signatureDataUrl;
+        
+        try {
+            await contractsApi.update(contractId, updates);
+            showNotification('Tanda tangan berhasil disimpan.');
+        } catch (err) {
+            console.error('Error signing contract:', err);
+            showNotification('Gagal menyimpan tanda tangan.');
+        }
+    };
+    
+    const handleSignInvoice = async (projectId: string, signatureDataUrl: string) => {
+        try {
+            await projectsApi.update(projectId, { invoiceSignature: signatureDataUrl });
+            showNotification('Invoice berhasil ditandatangani.');
+        } catch (err) {
+            console.error('Error signing invoice:', err);
+            showNotification('Gagal menandatangani invoice.');
+        }
+    };
+    
+    const handleSignTransaction = async (transactionId: string, signatureDataUrl: string) => {
+        try {
+            await transactionsApi.update(transactionId, { vendorSignature: signatureDataUrl });
+            showNotification('Kuitansi berhasil ditandatangani.');
+        } catch (err) {
+            console.error('Error signing transaction:', err);
+            showNotification('Gagal menandatangani kuitansi.');
+        }
+    };
+    
+    const handleSignPaymentRecord = async (recordId: string, signatureDataUrl: string) => {
+        try {
+            await paymentRecordsApi.update(recordId, { vendorSignature: signatureDataUrl });
+            showNotification('Slip pembayaran berhasil ditandatangani.');
+        } catch (err) {
+            console.error('Error signing payment record:', err);
+            showNotification('Gagal menandatangani slip pembayaran.');
+        }
+    };
 
+  // Show loading screen while data is being fetched
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  // Show error if data failed to load
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-brand-bg">
+        <div className="text-center p-8 bg-brand-surface rounded-2xl shadow-lg">
+          <h1 className="text-2xl font-bold text-brand-danger mb-4">Error Loading Data</h1>
+          <p className="text-brand-text-secondary mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="button-primary">
+            Reload Application
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure profile exists
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-brand-bg">
+        <div className="text-center p-8 bg-brand-surface rounded-2xl shadow-lg">
+          <h1 className="text-2xl font-bold text-brand-text-light mb-4">Setup Required</h1>
+          <p className="text-brand-text-secondary">Please set up your profile first.</p>
+        </div>
+      </div>
+    );
+  }
   const hasPermission = (view: ViewType) => {
     if (!currentUser) return false;
     if (currentUser.role === 'Admin') return true;
@@ -324,6 +489,9 @@ const App: React.FC = () => {
             cards={cards} setCards={setCards}
             pockets={pockets} setPockets={setPockets}
             promoCodes={promoCodes} setPromoCodes={setPromoCodes}
+            leadsApi={leadsApi} clientsApi={clientsApi} projectsApi={projectsApi}
+            transactionsApi={transactionsApi} cardsApi={cardsApi} pocketsApi={pocketsApi}
+            promoCodesApi={promoCodesApi}
         />;
       case ViewType.BOOKING:
         return <Booking
@@ -351,6 +519,8 @@ const App: React.FC = () => {
           promoCodes={promoCodes} setPromoCodes={setPromoCodes}
           onSignInvoice={handleSignInvoice}
           onSignTransaction={handleSignTransaction}
+          clientsApi={clientsApi} projectsApi={projectsApi} transactionsApi={transactionsApi}
+          cardsApi={cardsApi} pocketsApi={pocketsApi} promoCodesApi={promoCodesApi}
         />;
       case ViewType.PROJECTS:
         return <Projects 
@@ -365,6 +535,8 @@ const App: React.FC = () => {
           showNotification={showNotification}
           cards={cards}
           setCards={setCards}
+          projectsApi={projectsApi} teamPaymentsApi={teamPaymentsApi}
+          transactionsApi={transactionsApi} cardsApi={cardsApi}
         />;
       case ViewType.TEAM:
         return (
@@ -390,6 +562,9 @@ const App: React.FC = () => {
             cards={cards}
             setCards={setCards}
             onSignPaymentRecord={handleSignPaymentRecord}
+            teamMembersApi={teamMembersApi} teamPaymentsApi={teamPaymentsApi}
+            paymentRecordsApi={paymentRecordsApi} transactionsApi={transactionsApi}
+            rewardEntriesApi={rewardEntriesApi} cardsApi={cardsApi} pocketsApi={pocketsApi}
           />
         );
       case ViewType.FINANCE:
@@ -401,11 +576,21 @@ const App: React.FC = () => {
           cards={cards} setCards={setCards}
           teamMembers={teamMembers}
           rewardLedgerEntries={rewardLedgerEntries}
+          transactionsApi={transactionsApi} cardsApi={cardsApi} pocketsApi={pocketsApi}
         />;
       case ViewType.PACKAGES:
-        return <Packages packages={packages} setPackages={setPackages} addOns={addOns} setAddOns={setAddOns} projects={projects} />;
+        return <Packages 
+          packages={packages} setPackages={setPackages} 
+          addOns={addOns} setAddOns={setAddOns} 
+          projects={projects}
+          packagesApi={packagesApi} addOnsApi={addOnsApi}
+        />;
       case ViewType.ASSETS:
-        return <Assets assets={assets} setAssets={setAssets} profile={profile} showNotification={showNotification} />;
+        return <Assets 
+          assets={assets} setAssets={setAssets} 
+          profile={profile} showNotification={showNotification}
+          assetsApi={assetsApi}
+        />;
       case ViewType.CONTRACTS:
         return <Contracts 
             contracts={contracts} setContracts={setContracts}
@@ -414,18 +599,28 @@ const App: React.FC = () => {
             initialAction={initialAction} setInitialAction={setInitialAction}
             packages={packages}
             onSignContract={handleSignContract}
+            contractsApi={contractsApi}
         />;
       case ViewType.SOP:
-        return <SOPManagement sops={sops} setSops={setSops} profile={profile} showNotification={showNotification} />;
+        return <SOPManagement 
+          sops={sops} setSops={setSops} 
+          profile={profile} showNotification={showNotification}
+          sopsApi={sopsApi}
+        />;
       case ViewType.SETTINGS:
         return <Settings 
           profile={profile} setProfile={setProfile} 
           transactions={transactions} projects={projects}
           users={users} setUsers={setUsers}
           currentUser={currentUser}
+          profileApi={profileApi} usersApi={usersApi}
         />;
       case ViewType.CALENDAR:
-        return <CalendarView projects={projects} setProjects={setProjects} teamMembers={teamMembers} profile={profile} />;
+        return <CalendarView 
+          projects={projects} setProjects={setProjects} 
+          teamMembers={teamMembers} profile={profile}
+          projectsApi={projectsApi}
+        />;
       case ViewType.CLIENT_REPORTS:
         return <ClientReports 
             clients={clients}
@@ -434,11 +629,20 @@ const App: React.FC = () => {
             feedback={clientFeedback}
             setFeedback={setClientFeedback}
             showNotification={showNotification}
+            feedbackApi={feedbackApi}
         />;
       case ViewType.SOCIAL_MEDIA_PLANNER:
-        return <SocialPlanner posts={socialMediaPosts} setPosts={setSocialMediaPosts} projects={projects} showNotification={showNotification} />;
+        return <SocialPlanner 
+          posts={socialMediaPosts} setPosts={setSocialMediaPosts} 
+          projects={projects} showNotification={showNotification}
+          socialPostsApi={socialPostsApi}
+        />;
       case ViewType.PROMO_CODES:
-        return <PromoCodes promoCodes={promoCodes} setPromoCodes={setPromoCodes} projects={projects} showNotification={showNotification} />;
+        return <PromoCodes 
+          promoCodes={promoCodes} setPromoCodes={setPromoCodes} 
+          projects={projects} showNotification={showNotification}
+          promoCodesApi={promoCodesApi}
+        />;
       default:
         return <Dashboard 
           projects={projects} 
@@ -480,6 +684,8 @@ const App: React.FC = () => {
         setPromoCodes={setPromoCodes}
         showNotification={showNotification}
         setLeads={setLeads}
+        clientsApi={clientsApi} projectsApi={projectsApi} transactionsApi={transactionsApi}
+        cardsApi={cardsApi} promoCodesApi={promoCodesApi} leadsApi={leadsApi}
     />;
   }
   if (route.startsWith('#/public-lead-form')) {
@@ -487,13 +693,20 @@ const App: React.FC = () => {
         setLeads={setLeads}
         userProfile={profile}
         showNotification={showNotification}
+        leadsApi={leadsApi}
     />;
   }
   if (route.startsWith('#/feedback')) {
-    return <PublicFeedbackForm setClientFeedback={setClientFeedback} />;
+    return <PublicFeedbackForm 
+      setClientFeedback={setClientFeedback}
+      feedbackApi={feedbackApi}
+    />;
   }
   if (route.startsWith('#/suggestion-form')) {
-    return <SuggestionForm setLeads={setLeads} />;
+    return <SuggestionForm 
+      setLeads={setLeads}
+      leadsApi={leadsApi}
+    />;
   }
   if (route.startsWith('#/revision-form')) {
     return <PublicRevisionForm projects={projects} teamMembers={teamMembers} onUpdateRevision={handleUpdateRevision} />;
@@ -513,6 +726,7 @@ const App: React.FC = () => {
         onClientConfirmation={handleClientConfirmation}
         onClientSubStatusConfirmation={handleClientSubStatusConfirmation}
         onSignContract={handleSignContract}
+        feedbackApi={feedbackApi}
     />;
   }
   if (route.startsWith('#/freelancer-portal/')) {
@@ -575,6 +789,14 @@ const App: React.FC = () => {
       <BottomNavBar activeView={activeView} handleNavigation={handleNavigation} />
       {/* <FloatingActionButton onAddClick={(type) => console.log('Add', type)} /> */}
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
